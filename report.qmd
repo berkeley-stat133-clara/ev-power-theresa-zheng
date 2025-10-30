@@ -1,6 +1,6 @@
 ---
 title: "EV Power - Lab 4 Project Report"
-format: typst
+format: pdf
 ---
 
 # Example Solution 1
@@ -8,27 +8,167 @@ format: typst
 ## **Part 0: libraries**
 
 ```{r}
-
+library(tidyverse)
+library(rnaturalearth)
+library(sf)
+library(rnaturalearthhires)
 ```
 
 ## **Part 1:** **Defining Research Question**
 
-Chosen Question:
+Chosen Question: How does the proportion of renewable energy used and total energy used compared between States from 2021-2023? What does the comparison of EV registrations and total energy look like? 
 
 ## **Part 2: Data Preparation and Cleaning**
 
 ```{r}
+#read the files 
+renewable_2021 <- read.csv("data/renew-use-2021.csv")
+renewable_2022 <- read.csv("data/renew-use-2022.csv")
+renewable_2023 <- read.csv("data/renew-use-2023.csv")
+total_2023 <- read.csv("data/total-use-2023.csv")
+total_2022 <- read.csv("data/total-use-2022.csv")
+total_2021 <- read.csv("data/total-use-2021.csv")
+ev_reg <- read.csv("data/ev-registrations-by-state-2023.csv")
+energy_price <- read.csv("data/av-energy-price-2021-2023.csv")
+
+#change ev_reg so it has abbreviated states 
+ev_reg[,1] <- state.abb[match(ev_reg[,1], state.name)]
+#delete first two rows 
+ev_reg <- ev_reg[-c(1,2),]
+colnames(ev_reg) <- c("State", "Count_EV")
+#change NA to be DC 
+ev_reg[9,1] <- c("DC")
+ev_reg[52,1] <- c("US")
+ev_reg
+
+
+#pivot the total data sets so the state columns are rows 
+total_2023 <- pivot_longer(total_2023, cols = ev_reg[,1], names_to = "State", values_to = "Count") #Used the ev_reg abbreviations as the column names 
+total_2022 <- pivot_longer(total_2022, cols = ev_reg[,1], names_to = "State", values_to = "Count")
+total_2021 <- pivot_longer(total_2021, cols = ev_reg[,1], names_to = "State", values_to = "Count")
+
+#convert energy_price into a matrix 
+energy_price <- str_split(energy_price[,1], pattern = ",", simplify = TRUE) #simplify argument converts the list into a matrix 
+energy_price <- energy_price[-(1:2),] 
+colnames(energy_price) <- c("State", "2021", "2022", "2023")
+
+#ensure that each data set has numeric values for count & price 
+#for energy price:
+energy_price[,2] <- str_replace_all(energy_price[,2], pattern = "[^0-9.]", replacement ="") #replaces anything that isn't a digit or a period
+energy_price[,3] <- str_replace_all(energy_price[,3], pattern = "[^0-9.]", replacement = "")
+energy_price[,4] <- str_replace_all(energy_price[,4], pattern = "[^0-9.]", replacement ="")
+energy_price[,4] <- str_replace_all(energy_price[,4], pattern = "\\.$", replacement ="")
+energy_price <- as.data.frame(energy_price) # converts to a df 
+energy_price[,-1] <- apply(energy_price[,-1], 2, as.numeric) #converts all columns except first to a double 
+energy_price
+
+
+#for the ev_reg data set 
+ev_reg[,2] <- str_replace_all(ev_reg[,2], pattern = "[^0-9.]", replacement ="") 
+ev_reg[,2] <- as.numeric(ev_reg[,2])
+ev_reg
+
+#for the renewable data sets: turn into numeric variables & make the states all upper case 
+renewable_2021[,3] <- str_replace_all(renewable_2021[,3], pattern = "[^0-9.]", replacement ="") 
+renewable_2021[,3] <- as.numeric(renewable_2021[,3])
+renewable_2021[,1] <- toupper(renewable_2021[,1]) #makes all abbreviations uppercase 
+renewable_2021
+
+renewable_2022[,3] <- str_replace_all(renewable_2021[,3], pattern = "[^0-9.]", replacement ="") 
+renewable_2022[,3] <- as.numeric(renewable_2021[,3])
+renewable_2022[,1] <- toupper(renewable_2022[,1])
+renewable_2022
+
+renewable_2023[,3] <- str_replace_all(renewable_2021[,3], pattern = "[^0-9.]", replacement ="") 
+renewable_2023[,3] <- as.numeric(renewable_2021[,3])
+renewable_2023[,1] <- toupper(renewable_2023[,1])
+renewable_2023
 
 ```
 
 ## **Part 3: Joining / Pivoting Datasets for Analysis**
 
 ```{r}
+#table for first question: How does the proportion of renewable energy used and total energy used compared between States?
+#calculate the sum of newewable energy in the 2023 data set and then the sum of total energy, then create a new table w/ proportions 
+renewable_2023 <- renewable_2023 |>
+    group_by(State) |> 
+    summarize(renew_energy23 = sum(Renewable_Use_2023))
+
+total_2023 <- total_2023 |>
+    group_by(State) |> 
+    summarize(total_energy23 = sum(Count))
+
+new_2023 <- left_join(x= total_2023, y= renewable_2023, by = join_by("State" == "State")) 
+
+new_2023 <- new_2023 |> 
+    select("State", "total_energy23", "renew_energy23")|>
+    group_by("State") |>
+    mutate(proportion_23 = renew_energy23/total_energy23)|>
+    ungroup()|>
+    select("State", "proportion_23")
+
+#do the same but with data set 2022
+renewable_2022 <- renewable_2022 |>
+    group_by(State) |> 
+    summarize(renew_energy22 = sum(Renewable_Use_2022))
+
+total_2022 <- total_2022 |>
+    group_by(State) |> 
+    summarize(total_energy22 = sum(Count))
+
+new_2022 <- left_join(x= total_2022, y= renewable_2022, by = join_by("State" == "State")) 
+
+new_2022 <- new_2022 |> 
+    select("State", "total_energy22", "renew_energy22")|>
+    group_by("State") |>
+    mutate(proportion_22 = renew_energy22/total_energy22)|> 
+    ungroup()|>
+    select("State", "proportion_22")
+
+#do the same again but for data set 2021 
+renewable_2021 <- renewable_2021 |>
+    group_by(State) |> 
+    summarize(renew_energy21 = sum(Renewable_Use_2021))
+
+total_2021 <- total_2021 |>
+    group_by(State) |> 
+    summarize(total_energy21 = sum(Count))
+
+new_2021 <- left_join(x= total_2021, y= renewable_2021, by = join_by(State == State)) 
+
+new_2021 <- new_2021 |> 
+    select("State", "total_energy21", "renew_energy21")|>
+    group_by("State") |>
+    mutate(proportion_21 = renew_energy21/total_energy21) |> 
+    ungroup()|>
+    select("State", "proportion_21")
+
+
+join_table <- left_join(new_2021, new_2022)
+proportion_table <- left_join(new_2023, join_table) #shows the proportion of 
+average_proportion <- proportion_table|>
+    mutate(average = (proportion_23 + proportion_21 + proportion_22)/3)|> 
+    select(,c(1,5))
+
+ev_reg<- ev_reg |>
+    arrange(desc(Count_EV))|>
+    slice(-1)
+
 
 ```
 
 ## **Part 4: Mapping Visualization**
 
 ```{r}
-
+#create a map showing the gradient of average renewable energy proportions in each state 
+map_us <- ne_states(country = "United States of America", returnclass = "sf")
+map_us$iso_3166_2 <- str_replace_all(map_us$iso_3166_2, pattern = "^US-", replacement ="") 
+us_map <- left_join(x= map_us, y = average_proportion, by = join_by(iso_3166_2 == State))
+ggplot(us_map)+
+geom_sf(aes(fill = average), color = "blue")+
+scale_fill_gradient(low = "lightblue", high = "darkblue", na.value = "grey90")+
+coord_sf(xlim = c(-130, -65), ylim = c(24, 50)) +
+theme_minimal()+ 
+labs(title = "Average Proportion of Renewable Energy Used 2021-2023", fill = "Average Proportion")
 ```
