@@ -174,5 +174,8 @@ coord_sf(xlim = c(-130, -65), ylim = c(24, 50)) +
 theme_minimal()+ 
 labs(title = "Average Proportion of Renewable Energy Used 2021-2023", fill = "Average Proportion")
 ```
-## Analysis 
-I found that the state with the higest proportion of renewable energy was North Dakota. Second to that was Maine. However, in general, the Midwest used the smallest proportion of renewable energy compared to their use of total energy. This shows that even though CA has the most EV registered vehicles, they don't use the highest proportion renewable energy compared to other states. So this could mean the electricity to charge the vehiles aren't that renewable. 
+
+## Analysis
+
+I found that the state with the highest proportion of renewable energy was North Dakota. Second to that was Maine. However, in general, the Midwest used the smallest proportion of renewable energy compared to their use of total energy. This shows that even though CA has the most EV registered vehicles, they don't use the highest proportion renewable energy compared to other states. So this could mean the electricity to charge the vehicles aren't that renewable.
+
